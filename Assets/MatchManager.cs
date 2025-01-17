@@ -1,10 +1,18 @@
+using NUnit.Framework;
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MatchManager : NetworkBehaviour
 {
     public static MatchManager Instance;
     int connectedPlayers = 0;
+
+    [SerializeField] Sprite[] characterVariants;
+    [SerializeField] Sprite[] blockerVariants;
+
+    public NetworkVariable<int> hostVariant = new NetworkVariable<int>(0);
 
     private void Awake()
     {

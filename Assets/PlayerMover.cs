@@ -1,49 +1,69 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Unity.Cinemachine;
 using Unity.Netcode;
 using Unity.Netcode.Components;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
+using static UnityEngine.UI.Image;
 
 public class PlayerMover : NetworkBehaviour
 {
+    public NetworkVariable<int> appearanceIndex = new NetworkVariable<int>(0);
     public NetworkVariable<int> remainingHealth = new NetworkVariable<int>(3);
 
     [SerializeField] GameObject beamPrefab;
+    [SerializeField] GameObject blockerPrefab;
     [SerializeField] GameObject pointerModel;
 
     [SerializeField] InputActionReference cursorPosition;
     Vector2 mousePos;
     Vector2 shootDirection;
 
-    CinemachineImpulseSource impulseSource;
-
     float currentRotation = 0;
     bool shootCooldown = false;
 
-    bool canMove = true;
+    [SerializeField] bool canMove = true;
 
     public static PlayerMover MyPlayerInstance;
 
-    //IReadOnlyDictionary<ulong, NetworkClient> PLAYERS = NetworkManager.Singleton.ConnectedClients;
-
-    public override void OnNetworkSpawn()
+    public override async void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
+
     }
 
-    private void Start()
+    private async void Start()
     {
+        while(MatchManager.Instance == null) {
+            await Task.Yield();
+        }
+
+        if (IsOwner)
+        {
+            if (IsHost)
+            {
+                appearanceIndex.Value = Random.Range(0, 2);
+                MatchManager.Instance.hostVariant.Value = appearanceIndex.Value;
+            }
+            else
+            {
+                //the opposite of the host
+                appearanceIndex.Value = MatchManager.Instance.hostVariant.Value == 1 ? 0 : 1;
+            }
+        }
+
+        GetComponent<SpriteRenderer>().sprite = SpriteBank.Instance.GetPlayerSprite(appearanceIndex.Value);
+
         if (!IsOwner) {
             pointerModel.SetActive(false);
             return;
         }
 
         MyPlayerInstance = this;
-
-        impulseSource = GetComponent<CinemachineImpulseSource>();
 
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Confined;
@@ -65,7 +85,7 @@ public class PlayerMover : NetworkBehaviour
 
         MovePlayer();
 
-        if (Input.GetKeyDown(KeyCode.Space)) {
+        if (Input.GetKeyDown(KeyCode.Mouse0)) {
             ShootBeam();
         }
     }
@@ -89,36 +109,41 @@ public class PlayerMover : NetworkBehaviour
     private void ShootBeam()
     {
         shootCooldown = true;
-        TellServerToSpawnBeamRpc(currentRotation - 90);
-    }
-
-    [Rpc(SendTo.Server, Delivery = RpcDelivery.Reliable)]
-    private void TellServerToSpawnBeamRpc(float rot)
-    {
-        if (!IsServer) return;
 
         RaycastHit2D hit = Physics2D.Raycast(transform.position + new Vector3(shootDirection.x, shootDirection.y, 0), shootDirection, 100);
         Debug.DrawRay(transform.position + new Vector3(shootDirection.x, shootDirection.y, 0), shootDirection * 100, Color.red, 10);
 
         Vector2 endPos = hit ? hit.point : (Vector2)transform.position + shootDirection * 100;
-        if (hit && hit.collider.CompareTag("Player"))
+
+        BeamVisualServerRpc(transform.position, endPos);
+
+        if (!hit)
         {
+            Debug.Log("NO HIT");
+            return;
+
+        }
+
+        if (hit.collider.CompareTag("Player")) {
             hit.collider.GetComponent<PlayerMover>().DieRpc();
         }
-        else
-        {
+    }
 
-        }
+    [Rpc(SendTo.Server, Delivery = RpcDelivery.Reliable)]
+    private void BeamVisualServerRpc(Vector3 origin, Vector3 end)
+    {
+        if (!IsServer) return;
 
-        SpawnBeamRpc(rot, endPos);
+        BeamVisualClientRpc(origin, end);
     }
 
     [Rpc(SendTo.Everyone, Delivery = RpcDelivery.Reliable)]
-    private void SpawnBeamRpc(float rot, Vector2 endPos)
+    private void BeamVisualClientRpc(Vector3 startPos, Vector2 endPos)
     {
         CameraShakeManager.Instance.CameraShake(1);
-        GameObject beam = Instantiate(beamPrefab, transform.position, Quaternion.Euler(0, 0, rot));
-        beam.GetComponent<LineRenderer>().SetPosition(1, new Vector3(0, 100, 0));
+        GameObject beam = Instantiate(beamPrefab, Vector3.zero, Quaternion.identity);
+        beam.GetComponent<LineRenderer>().SetPosition(0, startPos);
+        beam.GetComponent<LineRenderer>().SetPosition(1, endPos);
         StartCoroutine(BeamDecay(beam));
     }
 
@@ -134,6 +159,7 @@ public class PlayerMover : NetworkBehaviour
     {
         if (!IsOwner) return;
 
+        Debug.Log("Player died");
         SetCanMove(false);
         LoseHealthRpc();
     }

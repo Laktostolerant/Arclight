@@ -119,6 +119,54 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &141209847
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 141209849}
+  - component: {fileID: 141209848}
+  m_Layer: 0
+  m_Name: SpriteBank
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &141209848
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 141209847}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30329b0e643ac80459403d69a286a064, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerSprites:
+  - {fileID: 1551902302831174120, guid: 925ec1cb41e08804b955ee7c826d7185, type: 3}
+  - {fileID: 5193969334187725521, guid: 04227f013ef72bb488d737388fa696e5, type: 3}
+  blockerSprites: []
+--- !u!4 &141209849
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 141209847}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.5792178, y: 1.506271, z: -0.043200023}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &515238674
 GameObject:
   m_ObjectHideFlags: 0
@@ -461,6 +509,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 754153142}
+  - component: {fileID: 754153143}
   - component: {fileID: 754153141}
   m_Layer: 0
   m_Name: Manager
@@ -481,6 +530,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9e31c5aa33f154d438e199a57f542b98, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ShowTopMostFoldoutHeaderGroup: 1
+  characterVariants:
+  - {fileID: 1551902302831174120, guid: 925ec1cb41e08804b955ee7c826d7185, type: 3}
+  - {fileID: 5193969334187725521, guid: 04227f013ef72bb488d737388fa696e5, type: 3}
+  blockerVariants:
+  - {fileID: 8423206148674547137, guid: 489802a5f32b2c54ca6cd9ad3f9e73e4, type: 3}
+  - {fileID: -6776885432360561100, guid: 1eb6a89c2cd1ab24ca278f15529713c0, type: 3}
+  hostVariant:
+    m_InternalValue: 0
 --- !u!4 &754153142
 Transform:
   m_ObjectHideFlags: 0
@@ -496,6 +554,31 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &754153143
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 754153140}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 1945752260
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!1 &803148951
 GameObject:
   m_ObjectHideFlags: 0
@@ -894,3 +977,4 @@ SceneRoots:
   - {fileID: 803148953}
   - {fileID: 2058036108}
   - {fileID: 754153142}
+  - {fileID: 141209849}
