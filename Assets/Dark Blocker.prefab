@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 1725252078623995044}
   - component: {fileID: 411836041047545500}
   - component: {fileID: 1848516690834788774}
+  - component: {fileID: 2879228966389239464}
   m_Layer: 0
   m_Name: Dark Blocker
   m_TagString: Bouncer
@@ -151,6 +152,18 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 0.8
+--- !u!114 &2879228966389239464
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5328985650712368843}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8aa50becbea5da4cb3b02ea9b9220ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &5911146536893617119
 GameObject:
   m_ObjectHideFlags: 0

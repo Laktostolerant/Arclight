@@ -12,11 +12,10 @@ using static UnityEngine.UI.Image;
 
 public class PlayerMover : NetworkBehaviour
 {
-    public NetworkVariable<int> appearanceIndex = new NetworkVariable<int>(0);
     public NetworkVariable<int> remainingHealth = new NetworkVariable<int>(3);
 
     [SerializeField] GameObject beamPrefab;
-    [SerializeField] GameObject blockerPrefab;
+    [SerializeField] GameObject deathParticles;
     [SerializeField] GameObject pointerModel;
 
     [SerializeField] InputActionReference cursorPosition;
@@ -30,10 +29,26 @@ public class PlayerMover : NetworkBehaviour
 
     public static PlayerMover MyPlayerInstance;
 
-    public override async void OnNetworkSpawn()
+    AudioSource audioSource;
+
+    private int appearanceIndex = 0;
+
+    public enum SoundType { FIRE, DEATH, WIN, LOSE }
+    [SerializeField] private AudioClip[] audioClips;
+
+    int portraitSide = 0;
+
+    float chatCooldown = 0;
+
+    float fireCooldown = 0;
+    float blockerCooldown = 0;
+
+    GameObject equippedBlocker;
+
+    public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-
+        audioSource = GetComponent<AudioSource>();
     }
 
     private async void Start()
@@ -42,21 +57,7 @@ public class PlayerMover : NetworkBehaviour
             await Task.Yield();
         }
 
-        if (IsOwner)
-        {
-            if (IsHost)
-            {
-                appearanceIndex.Value = Random.Range(0, 2);
-                MatchManager.Instance.hostVariant.Value = appearanceIndex.Value;
-            }
-            else
-            {
-                //the opposite of the host
-                appearanceIndex.Value = MatchManager.Instance.hostVariant.Value == 1 ? 0 : 1;
-            }
-        }
-
-        GetComponent<SpriteRenderer>().sprite = SpriteBank.Instance.GetPlayerSprite(appearanceIndex.Value);
+        GetComponent<SpriteRenderer>().sprite = FileBank.Instance.GetPlayerSprite(appearanceIndex);
 
         if (!IsOwner) {
             pointerModel.SetActive(false);
@@ -67,6 +68,17 @@ public class PlayerMover : NetworkBehaviour
 
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Confined;
+    }
+
+    [Rpc(SendTo.ClientsAndHost, Delivery = RpcDelivery.Reliable)]
+    public void GetAppearanceRpc(int index)
+    {
+        appearanceIndex = index;
+        portraitSide = IsHost ? 0 : 1;
+
+        equippedBlocker = FileBank.Instance.GetBlockerPrefab(appearanceIndex);
+
+        GetComponent<SpriteRenderer>().sprite = FileBank.Instance.GetPlayerSprite(appearanceIndex);
     }
 
     private void Update()
@@ -85,8 +97,33 @@ public class PlayerMover : NetworkBehaviour
 
         MovePlayer();
 
-        if (Input.GetKeyDown(KeyCode.Mouse0)) {
+
+        fireCooldown -= Time.deltaTime;
+        if (Input.GetKeyDown(KeyCode.Mouse0) && fireCooldown <= 0) {
             ShootBeam();
+            fireCooldown = 3;
+        }
+
+        blockerCooldown -= Time.deltaTime;
+        if (Input.GetKeyDown(KeyCode.Mouse1) && blockerCooldown <= 0)
+        {
+            SpawnBlockerRpc();
+            blockerCooldown = 6;
+        }
+
+        chatCooldown -= Time.deltaTime;
+        if (Input.GetKeyDown(KeyCode.Q) && chatCooldown <= 0)
+        {
+            int randomIndex = Random.Range(0, FileBank.Instance.negativeMessages.Length);
+            MatchManager.Instance.SendMessageRpc(portraitSide, FileBank.Instance.positiveMessages[randomIndex]);
+            chatCooldown = 2;
+        }
+
+        if (Input.GetKeyDown(KeyCode.E) && chatCooldown <= 0)
+        {
+            int randomIndex = Random.Range(0, FileBank.Instance.negativeMessages.Length);
+            MatchManager.Instance.SendMessageRpc(portraitSide, FileBank.Instance.negativeMessages[randomIndex]);
+            chatCooldown = 2;
         }
     }
 
@@ -127,6 +164,9 @@ public class PlayerMover : NetworkBehaviour
         if (hit.collider.CompareTag("Player")) {
             hit.collider.GetComponent<PlayerMover>().DieRpc();
         }
+        else if(hit.collider.TryGetComponent(out Blocker blocker)) {
+            blocker.BlockRpc();
+        }
     }
 
     [Rpc(SendTo.Server, Delivery = RpcDelivery.Reliable)]
@@ -141,6 +181,10 @@ public class PlayerMover : NetworkBehaviour
     private void BeamVisualClientRpc(Vector3 startPos, Vector2 endPos)
     {
         CameraShakeManager.Instance.CameraShake(1);
+
+        Instantiate(deathParticles, endPos, Quaternion.identity);
+        PlaySound(SoundType.FIRE);
+
         GameObject beam = Instantiate(beamPrefab, Vector3.zero, Quaternion.identity);
         beam.GetComponent<LineRenderer>().SetPosition(0, startPos);
         beam.GetComponent<LineRenderer>().SetPosition(1, endPos);
@@ -162,6 +206,7 @@ public class PlayerMover : NetworkBehaviour
         Debug.Log("Player died");
         SetCanMove(false);
         LoseHealthRpc();
+        PlayDeathSoundRpc();
     }
 
     [Rpc(SendTo.Server, Delivery = RpcDelivery.Reliable)]
@@ -170,8 +215,31 @@ public class PlayerMover : NetworkBehaviour
         remainingHealth.Value--;
     }
 
+    [Rpc(SendTo.ClientsAndHost, Delivery = RpcDelivery.Unreliable)]
+    public void PlayDeathSoundRpc()
+    {
+        if (!IsOwner) return;
+        PlaySound(SoundType.DEATH);
+    }
+
     public void SetCanMove(bool canMove)
     {
         this.canMove = canMove;
+    }
+
+    public void PlaySound(SoundType type)
+    {
+        audioSource.PlayOneShot(audioClips[(int)type]);
+    }
+
+    [Rpc(SendTo.Server, Delivery = RpcDelivery.Reliable)]
+    public void SpawnBlockerRpc()
+    {
+        Vector2 spawnPos = (Vector2)transform.position + shootDirection * 2;
+        GameObject spawnedBlocker = Instantiate(equippedBlocker, spawnPos, Quaternion.identity);
+        var networkObject = spawnedBlocker.GetComponent<NetworkObject>();
+        if (networkObject != null) {
+            networkObject.Spawn();
+        }
     }
 }
