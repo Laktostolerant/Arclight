@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Threading.Tasks;
 using Unity.Cinemachine;
 using Unity.Netcode;
@@ -12,8 +13,6 @@ using static UnityEngine.UI.Image;
 
 public class PlayerMover : NetworkBehaviour
 {
-    public NetworkVariable<int> remainingHealth = new NetworkVariable<int>(3);
-
     [SerializeField] GameObject beamPrefab;
     [SerializeField] GameObject deathParticles;
     [SerializeField] GameObject pointerModel;
@@ -24,8 +23,6 @@ public class PlayerMover : NetworkBehaviour
 
     float currentRotation = 0;
     bool shootCooldown = false;
-
-    [SerializeField] bool canMove = true;
 
     public static PlayerMover MyPlayerInstance;
 
@@ -76,6 +73,7 @@ public class PlayerMover : NetworkBehaviour
         appearanceIndex = index;
         portraitSide = IsHost ? 0 : 1;
 
+
         equippedBlocker = FileBank.Instance.GetBlockerPrefab(appearanceIndex);
 
         GetComponent<SpriteRenderer>().sprite = FileBank.Instance.GetPlayerSprite(appearanceIndex);
@@ -83,6 +81,10 @@ public class PlayerMover : NetworkBehaviour
 
     private void Update()
     {
+        if(!MatchManager.Instance || !MatchManager.Instance.RoundHasStarted.Value) {
+            return;
+        }
+
         if (!IsOwner) {
             return;
         }
@@ -93,7 +95,7 @@ public class PlayerMover : NetworkBehaviour
         currentRotation = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
         pointerModel.transform.rotation = Quaternion.Euler(0, 0, currentRotation);
 
-        if (shootCooldown || !canMove) return;
+        if (shootCooldown) return;
 
         MovePlayer();
 
@@ -148,17 +150,14 @@ public class PlayerMover : NetworkBehaviour
         shootCooldown = true;
 
         RaycastHit2D hit = Physics2D.Raycast(transform.position + new Vector3(shootDirection.x, shootDirection.y, 0), shootDirection, 100);
-        Debug.DrawRay(transform.position + new Vector3(shootDirection.x, shootDirection.y, 0), shootDirection * 100, Color.red, 10);
+        Debug.DrawRay(transform.position + new Vector3(shootDirection.x, shootDirection.y, 0), shootDirection * 100, UnityEngine.Color.red, 10);
 
         Vector2 endPos = hit ? hit.point : (Vector2)transform.position + shootDirection * 100;
 
         BeamVisualServerRpc(transform.position, endPos);
 
-        if (!hit)
-        {
-            Debug.Log("NO HIT");
+        if (!hit) {
             return;
-
         }
 
         if (hit.collider.CompareTag("Player")) {
@@ -203,16 +202,8 @@ public class PlayerMover : NetworkBehaviour
     {
         if (!IsOwner) return;
 
-        Debug.Log("Player died");
-        SetCanMove(false);
-        LoseHealthRpc();
         PlayDeathSoundRpc();
-    }
-
-    [Rpc(SendTo.Server, Delivery = RpcDelivery.Reliable)]
-    private void LoseHealthRpc()
-    {
-        remainingHealth.Value--;
+        MatchManager.Instance.EndRoundRpc();
     }
 
     [Rpc(SendTo.ClientsAndHost, Delivery = RpcDelivery.Unreliable)]
@@ -220,11 +211,6 @@ public class PlayerMover : NetworkBehaviour
     {
         if (!IsOwner) return;
         PlaySound(SoundType.DEATH);
-    }
-
-    public void SetCanMove(bool canMove)
-    {
-        this.canMove = canMove;
     }
 
     public void PlaySound(SoundType type)
