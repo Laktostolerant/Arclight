@@ -42,21 +42,29 @@ public class PlayerMover : NetworkBehaviour
 
     GameObject equippedBlocker;
 
+    Rigidbody2D rb;
+
+    ClientNetworkTransform CNTransform;
+
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
         audioSource = GetComponent<AudioSource>();
+        rb = GetComponent<Rigidbody2D>();
+        CNTransform = GetComponent<ClientNetworkTransform>();
     }
 
     private async void Start()
     {
-        while(MatchManager.Instance == null) {
+        while (MatchManager.Instance == null)
+        {
             await Task.Yield();
         }
 
         GetComponent<SpriteRenderer>().sprite = FileBank.Instance.GetPlayerSprite(appearanceIndex);
 
-        if (!IsOwner) {
+        if (!IsOwner)
+        {
             pointerModel.SetActive(false);
             return;
         }
@@ -71,7 +79,7 @@ public class PlayerMover : NetworkBehaviour
     public void GetAppearanceRpc(int index)
     {
         appearanceIndex = index;
-        portraitSide = IsHost ? 0 : 1;
+        portraitSide = IsHost ? 1 : 0;
 
 
         equippedBlocker = FileBank.Instance.GetBlockerPrefab(appearanceIndex);
@@ -81,11 +89,13 @@ public class PlayerMover : NetworkBehaviour
 
     private void Update()
     {
-        if(!MatchManager.Instance || !MatchManager.Instance.RoundHasStarted.Value) {
+        if (!MatchManager.Instance || !MatchManager.Instance.RoundHasStarted.Value)
+        {
             return;
         }
 
-        if (!IsOwner) {
+        if (!IsOwner)
+        {
             return;
         }
 
@@ -101,7 +111,8 @@ public class PlayerMover : NetworkBehaviour
 
 
         fireCooldown -= Time.deltaTime;
-        if (Input.GetKeyDown(KeyCode.Mouse0) && fireCooldown <= 0) {
+        if (Input.GetKeyDown(KeyCode.Mouse0) && fireCooldown <= 0)
+        {
             ShootBeam();
             fireCooldown = 3;
         }
@@ -156,14 +167,17 @@ public class PlayerMover : NetworkBehaviour
 
         BeamVisualServerRpc(transform.position, endPos);
 
-        if (!hit) {
+        if (!hit)
+        {
             return;
         }
 
-        if (hit.collider.CompareTag("Player")) {
+        if (hit.collider.CompareTag("Player"))
+        {
             hit.collider.GetComponent<PlayerMover>().DieRpc();
         }
-        else if(hit.collider.TryGetComponent(out Blocker blocker)) {
+        else if (hit.collider.TryGetComponent(out Blocker blocker))
+        {
             blocker.BlockRpc();
         }
     }
@@ -224,8 +238,19 @@ public class PlayerMover : NetworkBehaviour
         Vector2 spawnPos = (Vector2)transform.position + shootDirection * 2;
         GameObject spawnedBlocker = Instantiate(equippedBlocker, spawnPos, Quaternion.identity);
         var networkObject = spawnedBlocker.GetComponent<NetworkObject>();
-        if (networkObject != null) {
+        if (networkObject != null)
+        {
             networkObject.Spawn();
         }
+    }
+
+    [Rpc(SendTo.ClientsAndHost, Delivery = RpcDelivery.Reliable)]
+    public void TeleportToSpawnRpc(Vector2 spawnPos)
+    {
+        if (!IsOwner)
+            return;
+
+        transform.position = spawnPos;
+        CNTransform.Teleport(spawnPos, Quaternion.identity, Vector3.one * 0.5F);
     }
 }

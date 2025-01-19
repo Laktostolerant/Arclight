@@ -26,8 +26,8 @@ public class MatchManager : NetworkBehaviour
 
     List<PlayerMover> players = new List<PlayerMover>();
 
-    Vector2 player1SpawnPos = new Vector2(-7, 0);
-    Vector2 player2SpawnPos = new Vector2(7, 0);
+    public Vector2 player1SpawnPos = new Vector2(-7, 0);
+    public Vector2 player2SpawnPos = new Vector2(7, 0);
 
     private void Awake()
     {
@@ -91,7 +91,11 @@ public class MatchManager : NetworkBehaviour
     public void StartNewRoundRpc()
     {
         FadeInRpc();
-        TeleportPlayersRpc();
+
+        players[0].TeleportToSpawnRpc(player1SpawnPos);
+        players[1].TeleportToSpawnRpc(player2SpawnPos);
+        
+        //TeleportPlayersRpc();
 
         RoundHasStarted.Value = true;
     }
@@ -99,8 +103,8 @@ public class MatchManager : NetworkBehaviour
     [Rpc(SendTo.ClientsAndHost, Delivery = RpcDelivery.Reliable)]
     public void TeleportPlayersRpc()
     {
-        players[0].transform.position = player1SpawnPos;
-        players[1].transform.position = player2SpawnPos;
+        players[0].TeleportToSpawnRpc(player1SpawnPos);
+        players[1].TeleportToSpawnRpc(player2SpawnPos);
     }
 
     [Rpc(SendTo.Everyone, Delivery = RpcDelivery.Reliable)]
